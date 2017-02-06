@@ -1,0 +1,79 @@
+---
+title: "HUDM5124Assignment2"
+author: "Zhuqian Zhou"
+date: "2017/2/6"
+output: html_document
+---
+
+##1
+If you are using R, read in the data according to the provided control language. Note that I have provided the original multivariate data (students X variables), not a correlation matrix.
+```{r}
+a1 <- read.csv("Assn2_skill sets.csv") # read the data set
+```
+
+##2
+Compute a correlation matrix from the data, using the 24 skill variables (omit “undergraduate major”). Can you see any meaningful patterns in the correlation matrix?
+```{r, results='hide'}
+library(dplyr) # upload Package dplyr
+a2 <- dplyr::select(a1, -1) # remove first column "UG_major"
+cor <- cor(a2, method = "spearman") # calculate correlation using Spearman since data here are discrete
+library(Hmisc) # upload Package Hmisc
+rcorr(as.matrix(a2), type = "spearman") # calculate significant levels (p-value) of Spearman correlations
+```
+```{r}
+library(corrplot) # upload Package corrplot
+corrplot(cor, method="circle", tl.pos="lt", type="upper", tl.col="black", tl.cex=0.6, tl.srt=45, addCoef.col="black", addCoefasPercent = TRUE, sig.level=0.05, insig = "blank") # plot the correlation table
+```
+According to the correlation table and plot, the correlation coefficient between R1 and R2 is +1, which means they have a perfect positive correlation as is expected. Besides, there are some pairs, such as (HLM, MPLUS), (Java, Python) and (caculus, linear_alg), whose correlation coefficients are significantly above +0.6. And the correlation coefficient of the pair (Java, Algebra) is significantly below -0.6. It seems that on the one hand people tend to acquire HLM and MPLUS at the same time, learn Java and Python together, and take both of caculus and linear algerbra courses in college and vice versus. On the other hand, due to the significantly negative correlation between Java and Algebra, it seems that people who have leart Algebra are not likely to know how to use Java and vice versus though it looks a little wierd.
+
+##3
+Using the FACTOR procedure (in SPSS), or one of the PCA routines in R (prcomp, princomp, or eigen), conduct a PCA of the 24 skill variables and answer the following questions.
+```{r}
+a3 <- dplyr::select(a2, -SYSTAT, -Pascal, -Fortran) # remove columns where all values are zero
+a3 <- scale(a3, center = TRUE) # scale and center the data for easier interpretation; "center = true" makes all values of different variables distrubute around the same center value after being scaled
+pca <- prcomp(a3, scale = TRUE) # run PCA on the data
+```
+#A
+How many components should be extracted according to the (eigenvalue>=1) criterion? How many should be extracted according to the scree plot? (note – please present the scree plot).
+```{r}
+pca$sdev^2 # get variances that are proportional to eignvalues by squaring the standard deviations; 7 components should be extracted according to eigenvalue>=1
+plot(pca, type = "lines", main = "the scree plot") # draw the scree plot; 7 components should be extracted according to this plot
+```
+As is shown above, according to eigenvalue>=1, seven components should be extracted; according to the scree plot, the same seven components should be extracted, too. 
+
+#B
+Is the correlation matrix of full rank? Explain/show.
+```{r, eval=FALSE}
+pca$sdev^2
+library(Matrix) # upload Package Matrix
+rankMatrix(cor) # calculate the rank of a matrix; the result is 23
+```
+No, it isn't. Although all eigenvalues are greater than zero, the last one is 1.309808e-31 (according to the result of "pca$sdev^2" above) which is far smaller than the other eigenvalues and very close to zero, so it may be better to be considered as zero. Thus, the correlation matrix is not of full rank. Besides, calculate the rank of the matrix directly. We can get the result, 23, which is smaller than 24. Thus, it also supports the same judgment.
+
+#C
+Interpret the first three unrotated components. As an aid to doing this, for each component list the variables that have a positive loading > .4, and separately list the variables that have a negative loading <-.4. Discuss.
+```{r}
+cor[is.na(cor)]<-0
+pca2 <- princomp(cor, cor = TRUE, scores = TRUE) # calculate unrotated components
+pca2$loadings[,1:3]  # print loading of first three components
+```
+Interpretation:
+For Comp.1, it has highly positive correlations with Jave, RAPIDM, and Python and highly negative correlations with Algebra and Calculus, which means Comp.1 can be interpreted as one's pure programming competence without math backgrounds. Note: none of the loadings > .4 or <-.4. The criterion has been loosened.
+
+For Comp.2, it highly negative correlations with R (R1 and R2), MPLUS and HLM, which means Comp.2 can be interpreted as one's unfamiliarity of multivariate analysis. Note: only loadings related to R <-.4; no loadings > .4. The criterion has been loosened.
+
+For Comp.3, it has highly negative correlations with SAS, STATA and C_C, which means Comp.3 can be interpreted as one's improficiency of advanced data analysis tools. Note: only loadings related to SAS <-.4. The criterion has been loosened.
+
+#D
+Try a VARIMAX rotation of these three components. [Hint: in SPSS, use this syntax subcommand: /CRITERIA FACTORS(3) ITERATE(25) ]. Interpret the three rotated components. Which seems better / more interpretable, the unrotated or rotated solution?
+```{r}
+pca$rotation[,1:3] # print the rotation table to show loadings
+```
+Interpretation:
+For PC1, it has highly positive correlations with R (R1 and R2), and Python and highly negative correlations with Algebra and Calculus, which means PC1 can also be interpreted as one's pure programming competence without math backgrounds. Note: none of the loadings > .4 or <-.4. The criterion has been loosened.
+
+For PC2, it highly positive correlations with other_math, Calculas, multi_calc and linear_alg, which means PC2 can be interpreted as one's proficiency in Maths. Note: none of the loadings > .4 or <-.4. The criterion has been loosened.
+
+For PC3, it has highly negative correlations with Java, C_C, Matlab, and Python, which means PC3 can be interpreted as one's improficiency of programming language. Note: none of the loadings > .4 or <-.4. The criterion has been loosened.
+
+It seems that the rotated solution is more uniformed and logically consistent for interpretation than the unrotated one, so the rotated solution seems better.
